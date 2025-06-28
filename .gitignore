@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Виртуальное окружение
+venv/
+env/
+ENV/
+
+# Конфигурационные файлы окружения
+.env
+.env.*
+
+# VS Code
+.vscode/
+
+# Логи и временные файлы
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Архивы и большие файлы, которые не нужны в гите
+*.zip
+*.tar.gz
+
+# Pycache из любых директорий
+**/__pycache__/
+
+# Кэш pip и установщиков
+pip-wheel-metadata/
+*.egg-info/
+
+# Исключить utils.py, если не хочешь его коммитить
+utils.py

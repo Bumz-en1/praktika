@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление пользователями - Система распознавания лиц</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-left">
+            <a href="/" class="nav-button">
+                <span>🏠</span>
+                Главная
+            </a>
+            <a href="/add" class="nav-button">
+                <span>➕</span>
+                Добавить
+            </a>
+            <a href="/database" class="nav-button">
+                <span>🗄️</span>
+                База данных
+            </a>
+            <a href="/users" class="nav-button active">
+                <span>👥</span>
+                Пользователи
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="/profile" class="nav-button">
+                <span>👤</span>
+                Профиль
+            </a>
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>Управление пользователями</h1>
+            <p>Администрирование пользователей системы</p>
+        </div>
+
+        {% if query.success %}
+        <div class="alert alert-success">
+            {% if query.success == "edit" %}
+                Пользователь успешно отредактирован
+            {% elif query.success == "delete" %}
+                Пользователь успешно удален
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if query.error %}
+        <div class="alert alert-error">
+            {{ query.error }}
+        </div>
+        {% endif %}
+
+        <div class="users-table-container">
+            <table class="users-table">
+                <thead>
+                    <tr>
+                        <th>Фото</th>
+                        <th>Имя</th>
+                        <th>Email</th>
+                        <th>Роль</th>
+                        <th>Дата регистрации</th>
+                        <th>Статистика</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr data-user-id="{{ user.id }}" 
+                        data-first-name="{{ user.first_name }}" 
+                        data-last-name="{{ user.last_name }}" 
+                        data-email="{{ user.email }}" 
+                        data-role="{{ user.role }}">
+                        <td>
+                            <div class="user-avatar">
+                                {% if user.profile_photo %}
+                                <img src="{{ user.profile_photo }}" alt="{{ user.first_name }}" onerror="this.src='/static/default_avatar.png'">
+                                {% else %}
+                                <img src="/static/default_avatar.png" alt="{{ user.first_name }}">
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="user-name">
+                                <strong>{{ user.first_name }} {{ user.last_name }}</strong>
+                            </div>
+                        </td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            <span class="role-badge {{ 'admin' if user.role == 'admin' else 'user' }}">
+                                {{ "Администратор" if user.role == "admin" else "Пользователь" }}
+                            </span>
+                        </td>
+                        <td>{{ user.created_at_str if user.created_at_str else 'Не указано' }}</td>
+                        <td>
+                            <div class="user-stats">
+                                <small>Поиски: {{ user.face_searches or 0 }}</small><br>
+                                <small>Подтверждено: {{ user.confirmed_matches or 0 }}</small><br>
+                                <small>Отклонено: {{ user.rejected_matches or 0 }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="user-actions">
+                                <button class="btn btn-sm btn-primary" onclick="editUser('{{ user.id }}')">
+                                    Редактировать
+                                </button>
+                                {% if user.id != current_user.id %}
+                                <form action="/admin/delete-user/{{ user.id }}" method="post" style="display: inline;" onsubmit="return confirm('Вы уверены?')">
+                                    <button type="submit" class="btn btn-sm btn-danger">Удалить</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Модальное окно редактирования пользователя -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Редактировать пользователя</h2>
+                <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            </div>
+            <form id="editForm" method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="edit_first_name">Имя:</label>
+                    <input type="text" id="edit_first_name" name="first_name" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_last_name">Фамилия:</label>
+                    <input type="text" id="edit_last_name" name="last_name" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_email">Email:</label>
+                    <input type="email" id="edit_email" name="email" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_role">Роль:</label>
+                    <select id="edit_role" name="role" class="form-select">
+                        <option value="user">Пользователь</option>
+                        <option value="admin">Администратор</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit_password">Новый пароль (оставьте пустым, если не хотите менять):</label>
+                    <input type="password" id="edit_password" name="new_password" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="edit_photo">Фото профиля:</label>
+                    <input type="file" id="edit_photo" name="photo" class="form-input" accept="image/*">
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+    <script>
+function editUser(userId) {
+    // Находим строку таблицы с данными пользователя
+    const userRow = document.querySelector(`tr[data-user-id="${userId}"]`);
+    
+    if (!userRow) {
+        alert('Ошибка: данные пользователя не найдены');
+        return;
+    }
+    
+    // Получаем данные из атрибутов строки
+    const firstName = userRow.getAttribute('data-first-name') || '';
+    const lastName = userRow.getAttribute('data-last-name') || '';
+    const email = userRow.getAttribute('data-email') || '';
+    const role = userRow.getAttribute('data-role') || 'user';
+    
+    // Заполняем форму данными пользователя
+    document.getElementById('edit_first_name').value = firstName;
+    document.getElementById('edit_last_name').value = lastName;
+    document.getElementById('edit_email').value = email;
+    document.getElementById('edit_role').value = role;
+    
+    // Очищаем поле пароля и файла
+    document.getElementById('edit_password').value = '';
+    document.getElementById('edit_photo').value = '';
+    
+    const modal = document.getElementById('editModal');
+    const form = document.getElementById('editForm');
+    
+    // Устанавливаем action формы
+    form.action = `/admin/edit-user/${userId}`;
+    
+    // Показываем модальное окно
+    modal.style.display = 'block';
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+}
+
+// Закрытие модального окна при клике вне его
+window.onclick = function(event) {
+    const modal = document.getElementById('editModal');
+    if (event.target == modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Закрытие по Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeEditModal();
+    }
+});
+</script>
+</body>
+</html>

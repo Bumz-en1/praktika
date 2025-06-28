@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Двухэтапная аутентификация - Система распознавания лиц</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card twofa-card">
+            <div class="auth-header">
+                <div class="twofa-illustration">
+                    <div class="phone-icon">
+                        <span>📱</span>
+                    </div>
+                    <div class="telegram-logo">
+                        <span>✈️</span>
+                    </div>
+                </div>
+                <h1>Двухэтапная аутентификация</h1>
+                <p>Мы отправили код подтверждения в ваш Telegram</p>
+                <p style="color:red;">DEBUG: Вы на странице {{ request.url }}</p>
+            </div>
+
+            {% if error %}
+            <div class="alert alert-error">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <form class="auth-form twofa-form" action="/verify_2fa" method="post">
+                <div class="form-group">
+                    <label for="code">Введите 6-значный код:</label>
+                    <input type="text" id="code" name="code" class="form-input code-input" maxlength="6" placeholder="000000" required autofocus>
+                    <small class="form-hint">Код действителен в течение 3 минут</small>
+                </div>
+
+                <button type="submit" class="submit-btn">Подтвердить вход</button>
+            </form>
+
+            <div class="twofa-help">
+                <div class="help-item">
+                    <span class="help-icon">❓</span>
+                    <div class="help-text">
+                        <strong>Не получили код?</strong>
+                        <p>Проверьте Telegram или попробуйте войти заново</p>
+                    </div>
+                </div>
+                <div class="help-item">
+                    <span class="help-icon">🔒</span>
+                    <div class="help-text">
+                        <strong>Безопасность</strong>
+                        <p>Никогда не сообщайте этот код другим людям</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="auth-footer">
+                <a href="/login">← Вернуться к входу</a>
+            </div>
+        </div>
+
+        <button class="theme-toggle floating" onclick="toggleTheme()">
+            <span id="theme-icon">🌙</span>
+        </button>
+    </div>
+
+    <script>
+// Theme Management
+function initTheme() {
+    const savedTheme = localStorage.getItem("theme") || "light"
+    document.documentElement.setAttribute("data-theme", savedTheme)
+    updateThemeIcon(savedTheme)
+}
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute("data-theme")
+    const newTheme = currentTheme === "dark" ? "light" : "dark"
+
+    document.documentElement.setAttribute("data-theme", newTheme)
+    localStorage.setItem("theme", newTheme)
+    updateThemeIcon(newTheme)
+}
+
+function updateThemeIcon(theme) {
+    const icon = document.getElementById("theme-icon")
+    if (icon) {
+        icon.textContent = theme === "dark" ? "☀️" : "🌙"
+    }
+}
+
+// Автоматическое форматирование кода
+document.getElementById('code').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 6) value = value.slice(0, 6);
+    e.target.value = value;
+    
+    // Автоматическая отправка при вводе 6 цифр
+    if (value.length === 6) {
+        setTimeout(() => {
+            document.querySelector('.twofa-form').submit();
+        }, 500);
+    }
+});
+
+// Обработка вставки кода
+document.getElementById('code').addEventListener('paste', function(e) {
+    e.preventDefault();
+    let paste = (e.clipboardData || window.clipboardData).getData('text');
+    let code = paste.replace(/\D/g, '').slice(0, 6);
+    this.value = code;
+    
+    if (code.length === 6) {
+        setTimeout(() => {
+            document.querySelector('.twofa-form').submit();
+        }, 500);
+    }
+});
+
+// Инициализация темы
+document.addEventListener("DOMContentLoaded", () => {
+    initTheme()
+    
+    // Фокус на поле ввода
+    document.getElementById('code').focus();
+});
+
+// Анимация при загрузке
+document.addEventListener("DOMContentLoaded", () => {
+    const card = document.querySelector('.twofa-card');
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(20px)';
+    
+    setTimeout(() => {
+        card.style.transition = 'all 0.5s ease';
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+    }, 100);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация - Система распознавания лиц</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>Регистрация</h1>
+                <p>Создайте новый аккаунт</p>
+            </div>
+
+            {% if error %}
+            <div class="alert alert-error">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <form class="auth-form" action="/register" method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="first_name">Имя:</label>
+                    <input type="text" id="first_name" name="first_name" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="last_name">Фамилия:</label>
+                    <input type="text" id="last_name" name="last_name" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Пароль:</label>
+                    <input type="password" id="password" name="password" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="photo">Фото профиля (необязательно):</label>
+                    <input type="file" id="photo" name="photo" class="form-input" accept="image/*">
+                </div>
+
+                <button type="submit" class="submit-btn">Зарегистрироваться</button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Уже есть аккаунт? <a href="/login">Войти</a></p>
+            </div>
+        </div>
+
+        <button class="theme-toggle floating" onclick="toggleTheme()">
+            <span id="theme-icon">🌙</span>
+        </button>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

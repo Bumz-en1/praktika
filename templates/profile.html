@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль - {{ user.first_name }} {{ user.last_name }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-left">
+            <a href="/" class="nav-button">
+                <span>🏠</span>
+                Главная
+            </a>
+            {% if user.role == "admin" %}
+            <a href="/add" class="nav-button">
+                <span>➕</span>
+                Добавить
+            </a>
+            <a href="/database" class="nav-button">
+                <span>🗄️</span>
+                База данных
+            </a>
+            <a href="/users" class="nav-button">
+                <span>👥</span>
+                Пользователи
+            </a>
+            {% endif %}
+        </div>
+        <div class="nav-right">
+            <a href="/profile" class="nav-button active">
+                <span>👤</span>
+                Профиль
+            </a>
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% if message %}
+        <div class="alert alert-success">
+            {{ message }}
+        </div>
+        {% endif %}
+
+        {% if telegram_success %}
+        <div class="alert alert-success">
+            {% if telegram_success == "linked" %}
+                Telegram аккаунт успешно привязан!
+            {% elif telegram_success == "unlinked" %}
+                Telegram аккаунт успешно отвязан!
+            {% elif telegram_success == "2fa_enabled" %}
+                Двухэтапная аутентификация успешно включена! 🔐
+            {% elif telegram_success == "2fa_disabled" %}
+                Двухэтапная аутентификация отключена! 🔓
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if telegram_error %}
+        <div class="alert alert-error">
+            {{ telegram_error }}
+        </div>
+        {% endif %}
+
+        <div class="profile-header">
+            <div class="profile-avatar">
+                {% if user.profile_photo %}
+                <img src="{{ user.profile_photo or '/static/default_avatar.png' }}" alt="Фото профиля" onerror="this.src='/static/default_avatar.png'">
+                {% else %}
+                <div class="avatar-placeholder">{{ user.first_name[0] }}{{ user.last_name[0] }}</div>
+                {% endif %}
+            </div>
+            <div class="profile-info">
+                <h1>{{ user.first_name }} {{ user.last_name }}</h1>
+                <p class="profile-email">{{ user.email }}</p>
+                <span class="profile-role">{{ "Администратор" if user.role == "admin" else "Пользователь" }}</span>
+            </div>
+        </div>
+
+        <div class="profile-content">
+            <div class="profile-section">
+                <h2>Статистика</h2>
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-number">{{ stats.total }}</div>
+                        <div class="stat-label">Всего поисков</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">{{ stats.confirmed }}</div>
+                        <div class="stat-label">Подтверждено</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">{{ stats.rejected }}</div>
+                        <div class="stat-label">Отклонено</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="profile-section">
+                <h2>Изменить пароль</h2>
+                {% if password_error %}
+                <div class="alert alert-error">
+                    {{ password_error }}
+                </div>
+                {% endif %}
+                <form class="password-form" action="/change-password" method="post">
+                    <div class="form-group">
+                        <label for="old_password">Текущий пароль:</label>
+                        <input type="password" id="old_password" name="old_password" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new_password">Новый пароль:</label>
+                        <input type="password" id="new_password" name="new_password" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm_password">Подтвердите пароль:</label>
+                        <input type="password" id="confirm_password" name="confirm_password" class="form-input" required>
+                    </div>
+                    <button type="submit" class="submit-btn">Изменить пароль</button>
+                </form>
+            </div>
+
+            <div class="profile-section">
+                <h2>Telegram</h2>
+                {% if user.telegram_id %}
+                <div class="telegram-info">
+                    <p><strong>Telegram ID:</strong> {{ user.telegram_id }}</p>
+                    <p class="text-secondary">Ваш аккаунт Telegram успешно привязан</p>
+                </div>
+                <form action="/unlink_telegram" method="post" style="display: inline;" onsubmit="return confirm('Вы уверены, что хотите отвязать Telegram? Это отключит двухэтапную аутентификацию.')">
+                    <button type="submit" class="btn btn-danger">
+                        <span>🔗</span>
+                        Отвязать Telegram
+                    </button>
+                </form>
+                {% else %}
+                <div class="telegram-info">
+                    <p class="text-secondary">Telegram аккаунт не привязан</p>
+                    <p><small>Привяжите Telegram для получения уведомлений и двухэтапной аутентификации</small></p>
+                </div>
+                <button onclick="linkTelegram()" class="btn btn-primary">
+                    <span>📱</span>
+                    Привязать Telegram
+                </button>
+                {% endif %}
+            </div>
+
+            {% if user.telegram_id %}
+            <div class="profile-section">
+                <h2>Двухэтапная аутентификация</h2>
+                <div class="twofa-info">
+                    {% if user.two_step_auth %}
+                    <div class="twofa-status enabled">
+                        <span class="status-icon">🔐</span>
+                        <div class="status-text">
+                            <strong>Включена</strong>
+                            <p>При входе в систему вам будет отправлен код подтверждения в Telegram</p>
+                        </div>
+                    </div>
+                    <button onclick="toggle2FA()" class="btn btn-danger">
+                        <span>🔓</span>
+                        Отключить двухэтапную аутентификацию
+                    </button>
+                    {% else %}
+                    <div class="twofa-status disabled">
+                        <span class="status-icon">🔓</span>
+                        <div class="status-text">
+                            <strong>Отключена</strong>
+                            <p>Включите для дополнительной защиты вашего аккаунта</p>
+                        </div>
+                    </div>
+                    <button onclick="toggle2FA()" class="btn btn-success">
+                        <span>🔐</span>
+                        Включить двухэтапную аутентификацию
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="profile-section">
+                <h2>Действия</h2>
+                <form action="/logout" method="post" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Выйти из системы</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно подтверждения 2FA -->
+    <div id="twoFAModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Подтверждение действия</h2>
+                <button class="modal-close" onclick="closeTwoFAModal()">&times;</button>
+            </div>
+            <div class="twofa-modal-body">
+                <div class="twofa-icon">
+                    <span>📱</span>
+                </div>
+                <p>Для изменения настроек двухэтапной аутентификации введите код, отправленный в Telegram</p>
+                <form id="twoFAForm" method="post">
+                    <div class="form-group">
+                        <label for="verification_code">Код подтверждения:</label>
+                        <input type="text" id="verification_code" name="code" class="form-input code-input" maxlength="6" placeholder="000000" required>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="submit" class="btn btn-primary">Подтвердить</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeTwoFAModal()">Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+    <script>
+async function linkTelegram() {
+    try {
+        const response = await fetch('/link_telegram', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.link) {
+            window.open(data.link, '_blank');
+            showNotification('Перейдите в Telegram и нажмите "Начать"', 'info');
+        } else {
+            showNotification('Ошибка при создании ссылки', 'error');
+        }
+    } catch (error) {
+        showNotification('Ошибка при привязке Telegram', 'error');
+    }
+}
+
+async function toggle2FA() {
+    try {
+        // Отправляем запрос на получение кода
+        const response = await fetch('/request_2fa_code', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (response.ok) {
+            showNotification('Код отправлен в Telegram', 'success');
+            document.getElementById('twoFAModal').style.display = 'block';
+            document.getElementById('twoFAForm').action = '/toggle_2fa';
+        } else {
+            showNotification('Ошибка при отправке кода', 'error');
+        }
+    } catch (error) {
+        showNotification('Ошибка при запросе кода', 'error');
+    }
+}
+
+function closeTwoFAModal() {
+    document.getElementById('twoFAModal').style.display = 'none';
+    document.getElementById('verification_code').value = '';
+}
+
+// Закрытие модального окна при клике вне его
+window.onclick = function(event) {
+    const modal = document.getElementById('twoFAModal');
+    if (event.target == modal) {
+        closeTwoFAModal();
+    }
+}
+
+// Автоматическое форматирование кода
+document.getElementById('verification_code').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 6) value = value.slice(0, 6);
+    e.target.value = value;
+});
+
+// Закрытие по Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeTwoFAModal();
+    }
+});
+</script>
+</body>
+</html>

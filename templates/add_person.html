@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Добавить человека - Система распознавания лиц</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-left">
+            <a href="/" class="nav-button">
+                <span>🏠</span>
+                Главная
+            </a>
+            <a href="/add" class="nav-button active">
+                <span>➕</span>
+                Добавить
+            </a>
+            <a href="/database" class="nav-button">
+                <span>🗄️</span>
+                База данных
+            </a>
+            <a href="/users" class="nav-button">
+                <span>👥</span>
+                Пользователи
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="/profile" class="nav-button">
+                <span>👤</span>
+                Профиль
+            </a>
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>Добавить человека в базу данных</h1>
+            <p>Загрузите фотографию и укажите информацию о человеке</p>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-error">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <div class="form-container">
+            <form class="add-person-form" action="/add" method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="name">Имя и фамилия:</label>
+                    <input type="text" id="name" name="name" class="form-input" required placeholder="Введите полное имя">
+                </div>
+
+                <div class="form-group">
+                    <label for="gender">Пол:</label>
+                    <select id="gender" name="gender" class="form-select" required>
+                        <option value="">Выберите пол</option>
+                        <option value="мужской">Мужской</option>
+                        <option value="женский">Женский</option>
+                        <option value="не указано">Не указано</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="file">Фотография:</label>
+                    <div class="file-upload-area" id="file-upload-area">
+                        <input type="file" id="file" name="file" class="form-input file-input" accept="image/*" required>
+                        <div class="file-upload-text">
+                            <span class="upload-icon">📷</span>
+                            <p>Нажмите или перетащите фото сюда</p>
+                            <small>Поддерживаются форматы: JPG, PNG, MOV, MP4 и другие</small>
+                        </div>
+                    </div>
+                    <div id="file-preview" class="file-preview"></div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="submit-btn">Добавить человека</button>
+                    <a href="/" class="btn btn-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+    <script>
+        // Обработка загрузки файла
+        const fileInput = document.getElementById('file');
+        const fileUploadArea = document.getElementById('file-upload-area');
+        const filePreview = document.getElementById('file-preview');
+
+        fileInput.addEventListener('change', handleFileSelect);
+        fileUploadArea.addEventListener('dragover', handleDragOver);
+        fileUploadArea.addEventListener('drop', handleDrop);
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                showFilePreview(file);
+            }
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            fileUploadArea.classList.add('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            fileUploadArea.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                showFilePreview(files[0]);
+            }
+        }
+
+        function showFilePreview(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                filePreview.innerHTML = `
+                    <img src="${e.target.result}" alt="Предварительный просмотр">
+                    <p>${file.name}</p>
+                `;
+                filePreview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    </script>
+</body>
+</html>

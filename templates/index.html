@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition System</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --text-primary: #2c3e50;
+            --text-secondary: #6c757d;
+            --accent: #3498db;
+            --accent-hover: #2980b9;
+            --border: #e9ecef;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+            --accent: #4a9eff;
+            --accent-hover: #357abd;
+            --border: #404040;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: all 0.3s ease;
+        }
+
+        .navbar {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-left, .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .nav-button {
+            background: none;
+            border: 2px solid transparent;
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .nav-button.active {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        .nav-button:hover {
+            background-color: var(--accent);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .nav-button.primary {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        .nav-button.primary:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .admin-only {
+            display: none;
+        }
+
+        .admin-only.show {
+            display: flex;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 4rem 0;
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+            border-radius: 16px;
+            margin-bottom: 3rem;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .feature-card {
+            background-color: var(--bg-secondary);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px var(--shadow);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .feature-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .upload-section {
+            background-color: var(--bg-secondary);
+            padding: 3rem;
+            border-radius: 16px;
+            border: 2px dashed var(--border);
+            text-align: center;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: var(--accent);
+            background-color: var(--bg-primary);
+        }
+
+        .upload-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            text-align: left;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .form-input {
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .form-select {
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .submit-btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .submit-btn:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-2px);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .stat-card {
+            background-color: var(--bg-secondary);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .theme-toggle {
+            background: none;
+            border: 2px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.5rem;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.2s ease;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .theme-toggle:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 1rem;
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .nav-left, .nav-right {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background-color: var(--success);
+        }
+
+        .notification.error {
+            background-color: var(--danger);
+        }
+
+        .notification.warning {
+            background-color: var(--warning);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-left">
+            <a href="/" class="nav-button active">
+                <span>🏠</span>
+                Главная
+            </a>
+            {% if user_role == "admin" %}
+            <a href="/add" class="nav-button">
+                <span>➕</span>
+                Добавить
+            </a>
+            <a href="/database" class="nav-button">
+                <span>🗄️</span>
+                База данных
+            </a>
+            <a href="/users" class="nav-button">
+                <span>👥</span>
+                Пользователи
+            </a>
+            {% endif %}
+        </div>
+        <div class="nav-right">
+            <a href="/profile" class="nav-button">
+                <span>👤</span>
+                Профиль
+            </a>
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Система распознавания лиц</h1>
+            <p>Современная система для идентификации людей на фотографиях и видео с использованием технологий построения координат векторов лица</p>
+        </div>
+
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon">📸</div>
+                <h3>Распознавание фото</h3>
+                <p>Загрузите фотографию и получите информацию о людях на изображении с высокой точностью</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎥</div>
+                <h3>Анализ видео</h3>
+                <p>Обработка видеофайлов для поиска и идентификации лиц на протяжении всего ролика</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Объемная база данных</h3>
+                <p>Огромное количество известных лиц для определения именно на вашем изображении</p>
+            </div>
+        </div>
+
+        <div class="upload-section">
+            <h2 style="margin-bottom: 2rem; color: var(--text-primary);">Распознать лица</h2>
+            <form class="upload-form" action="/recognize" method="post" enctype="multipart/form-data">
+                <input type="hidden" name="user_id" value="{{ current_user.id }}">
+
+                <div class="form-group">
+                    <label for="media">Выберите файл (фото или видео):</label>
+                    <input type="file" id="media" name="media" class="form-input" accept="image/*,video/*" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="gender">Фильтр по полу:</label>
+                    <select id="gender" name="gender" class="form-select">
+                        <option value="не указано">Не указано</option>
+                        <option value="мужской">Мужской</option>
+                        <option value="женский">Женский</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="tolerance">Точность распознавания:</label>
+                    <select id="tolerance" name="tolerance" class="form-select">
+                        <option value="0.4">Высокая (строгая)</option>
+                        <option value="0.6" selected>Средняя (рекомендуемая)</option>
+                        <option value="0.8">Низкая (мягкая)</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="submit-btn">Начать распознавание</button>
+            </form>
+        </div>
+
+        <div class="stats" id="user-stats">
+            <div class="stat-card">
+                <div class="stat-number">{{ current_user.face_searches }}</div>
+                <div class="stat-label">Всего поисков</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ current_user.confirmed_matches }}</div>
+                <div class="stat-label">Подтверждено</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ current_user.rejected_matches }}</div>
+                <div class="stat-label">Отклонено</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

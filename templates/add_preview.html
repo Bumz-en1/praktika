@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Предварительный просмотр - Система распознавания лиц</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-left">
+            <a href="/" class="nav-button">
+                <span>🏠</span>
+                Главная
+            </a>
+            <a href="/add" class="nav-button active">
+                <span>➕</span>
+                Добавить
+            </a>
+            <a href="/database" class="nav-button">
+                <span>🗄️</span>
+                База данных
+            </a>
+            <a href="/users" class="nav-button">
+                <span>👥</span>
+                Пользователи
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="/profile" class="nav-button">
+                <span>👤</span>
+                Профиль
+            </a>
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>Предварительный просмотр</h1>
+            <p>Проверьте данные перед добавлением в базу</p>
+        </div>
+
+        <div class="preview-container">
+            <div class="preview-card">
+                <div class="preview-image">
+                    <img src="{{ photo_url }}" alt="{{ name }}">
+                </div>
+                <div class="preview-info">
+                    <h2>{{ name }}</h2>
+                    <p class="preview-gender">Пол: {{ gender }}</p>
+                </div>
+            </div>
+
+            <div class="preview-actions">
+                <form action="/add/confirm" method="post">
+                    <input type="hidden" name="name" value="{{ name }}">
+                    <input type="hidden" name="gender" value="{{ gender }}">
+                    <input type="hidden" name="photo_filename" value="{{ photo_filename }}">
+                    <button type="submit" class="btn btn-success">
+                        ✓ Подтвердить добавление
+                    </button>
+                </form>
+                <a href="/add" class="btn btn-secondary">
+                    ← Вернуться к редактированию
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

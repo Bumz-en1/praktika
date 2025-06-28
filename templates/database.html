@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>База данных - Система распознавания лиц</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-left">
+            <a href="/" class="nav-button">
+                <span>🏠</span>
+                Главная
+            </a>
+            <a href="/add" class="nav-button">
+                <span>➕</span>
+                Добавить
+            </a>
+            <a href="/database" class="nav-button active">
+                <span>🗄️</span>
+                База данных
+            </a>
+            <a href="/users" class="nav-button">
+                <span>👥</span>
+                Пользователи
+            </a>
+        </div>
+        <div class="nav-right">
+            <a href="/profile" class="nav-button">
+                <span>👤</span>
+                Профиль
+            </a>
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>База данных лиц</h1>
+            <p>Управление базой данных известных лиц</p>
+            <a href="/add" class="btn btn-primary">
+                <span>➕</span>
+                Добавить человека
+            </a>
+        </div>
+
+        <div class="database-controls">
+            <div class="search-section">
+                <div class="search-group">
+                    <input type="text" id="searchInput" class="form-input" placeholder="Поиск по имени или ID...">
+                    <button onclick="searchPersons()" class="btn btn-primary">🔍 Найти</button>
+                    <button onclick="clearSearch()" class="btn btn-secondary">Очистить</button>
+                </div>
+            </div>
+            
+            <div class="pagination-controls">
+                <div class="records-per-page">
+                    <label for="recordsPerPage">Записей на странице:</label>
+                    <select id="recordsPerPage" class="form-select" onchange="changeRecordsPerPage()">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50" selected>50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+                
+                <div class="pagination-info">
+                    <span id="paginationInfo">Показано 1-{{ persons|length }} из {{ persons|length }} записей</span>
+                </div>
+                
+                <div class="pagination-buttons">
+                    <button id="prevBtn" onclick="previousPage()" class="btn btn-secondary" disabled>← Предыдущая</button>
+                    <span id="pageNumbers"></span>
+                    <button id="nextBtn" onclick="nextPage()" class="btn btn-secondary">Следующая →</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="database-stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalRecords">{{ persons|length }}</div>
+                <div class="stat-label">Всего записей</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="filteredRecords">{{ persons|length }}</div>
+                <div class="stat-label">Отображается</div>
+            </div>
+        </div>
+
+        <div class="database-grid" id="databaseGrid">
+            {% for person in persons %}
+            <div class="person-card" data-name="{{ person.name|lower }}" data-id="{{ person.id }}">
+                <div class="person-photo">
+                    <img src="{{ person.photo_path }}" alt="{{ person.name }}" onerror="this.src='/static/default_avatar.png'">
+                </div>
+                <div class="person-info">
+                    <h3>{{ person.name }}</h3>
+                    <p class="person-gender">{{ person.gender }}</p>
+                    <p class="person-id">ID: {{ person.id }}</p>
+                </div>
+                <div class="person-actions">
+                    <button class="btn btn-sm btn-danger" onclick="deletePerson('{{ person.id }}')">
+                        Удалить
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if not persons %}
+        <div class="empty-state">
+            <div class="empty-icon">🗄️</div>
+            <h2>База данных пуста</h2>
+            <p>Добавьте первого человека в базу данных</p>
+            <a href="/add" class="btn btn-primary">Добавить человека</a>
+        </div>
+        {% endif %}
+
+        <!-- Пустое состояние для поиска -->
+        <div id="emptySearchState" class="empty-state" style="display: none;">
+            <div class="empty-icon">🔍</div>
+            <h2>Ничего не найдено</h2>
+            <p>Попробуйте изменить поисковый запрос</p>
+            <button onclick="clearSearch()" class="btn btn-primary">Очистить поиск</button>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+    <script>
+function deletePerson(personId) {
+    if (confirm('Вы уверены, что хотите удалить этого человека из базы данных?')) {
+        fetch(`/delete-person/${personId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Ошибка при удалении');
+            }
+        })
+        .catch(error => {
+            alert('Ошибка при удалении');
+        });
+    }
+}
+
+// Переменные для пагинации и поиска
+let currentPage = 1;
+let recordsPerPage = 50;
+let allPersonCards = [];
+let filteredPersonCards = [];
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Получаем все карточки персон
+    allPersonCards = Array.from(document.querySelectorAll('.person-card'));
+    filteredPersonCards = [...allPersonCards];
+    
+    // Инициализируем отображение
+    updateDisplay();
+});
+
+function searchPersons() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+    
+    if (searchTerm === '') {
+        filteredPersonCards = [...allPersonCards];
+    } else {
+        filteredPersonCards = allPersonCards.filter(card => {
+            const name = card.getAttribute('data-name') || '';
+            const id = card.getAttribute('data-id') || '';
+            return name.includes(searchTerm) || id.includes(searchTerm);
+        });
+    }
+    
+    currentPage = 1;
+    updateDisplay();
+}
+
+function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    filteredPersonCards = [...allPersonCards];
+    currentPage = 1;
+    updateDisplay();
+}
+
+function changeRecordsPerPage() {
+    recordsPerPage = parseInt(document.getElementById('recordsPerPage').value);
+    currentPage = 1;
+    updateDisplay();
+}
+
+function previousPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        updateDisplay();
+    }
+}
+
+function nextPage() {
+    const totalPages = Math.ceil(filteredPersonCards.length / recordsPerPage);
+    if (currentPage < totalPages) {
+        currentPage++;
+        updateDisplay();
+    }
+}
+
+function goToPage(page) {
+    currentPage = page;
+    updateDisplay();
+}
+
+function updateDisplay() {
+    const startIndex = (currentPage - 1) * recordsPerPage;
+    const endIndex = startIndex + recordsPerPage;
+    
+    // Скрываем все карточки
+    allPersonCards.forEach(card => {
+        card.style.display = 'none';
+    });
+    
+    // Показываем только нужные карточки из отфильтрованного списка
+    const currentPageCards = filteredPersonCards.slice(startIndex, endIndex);
+    currentPageCards.forEach(card => {
+        card.style.display = 'block';
+    });
+    
+    // Обновляем информацию о пагинации
+    const totalPages = Math.ceil(filteredPersonCards.length / recordsPerPage);
+    const showingStart = filteredPersonCards.length > 0 ? startIndex + 1 : 0;
+    const showingEnd = Math.min(endIndex, filteredPersonCards.length);
+    
+    document.getElementById('paginationInfo').textContent = 
+        `Показано ${showingStart}-${showingEnd} из ${filteredPersonCards.length} записей`;
+    
+    document.getElementById('filteredRecords').textContent = filteredPersonCards.length;
+    
+    // Обновляем кнопки пагинации
+    document.getElementById('prevBtn').disabled = currentPage === 1;
+    document.getElementById('nextBtn').disabled = currentPage === totalPages || totalPages === 0;
+    
+    // Обновляем номера страниц
+    updatePageNumbers(totalPages);
+    
+    // Показываем/скрываем пустое состояние
+    const emptyState = document.getElementById('emptySearchState');
+    if (filteredPersonCards.length === 0 && allPersonCards.length > 0) {
+        emptyState.style.display = 'block';
+    } else {
+        emptyState.style.display = 'none';
+    }
+}
+
+function updatePageNumbers(totalPages) {
+    const pageNumbers = document.getElementById('pageNumbers');
+    pageNumbers.innerHTML = '';
+    
+    if (totalPages <= 1) return;
+    
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.className = `btn btn-sm ${i === currentPage ? 'btn-primary' : 'btn-secondary'}`;
+        pageBtn.textContent = i;
+        pageBtn.onclick = () => goToPage(i);
+        pageNumbers.appendChild(pageBtn);
+    }
+}
+
+// Поиск по Enter
+document.getElementById('searchInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        searchPersons();
+    }
+});
+
+// Поиск в реальном времени с задержкой
+let searchTimeout;
+document.getElementById('searchInput').addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(searchPersons, 300);
+});
+</script>
+</body>
+</html>

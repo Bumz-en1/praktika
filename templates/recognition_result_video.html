@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Результаты распознавания видео - Система распознавания лиц</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-left">
+            <a href="/" class="nav-button">
+                <span>🏠</span>
+                Главная
+            </a>
+            {% if current_user.role == "admin" %}
+            <a href="/add" class="nav-button">
+                <span>➕</span>
+                Добавить
+            </a>
+            <a href="/database" class="nav-button">
+                <span>🗄️</span>
+                База данных
+            </a>
+            <a href="/users" class="nav-button">
+                <span>👥</span>
+                Пользователи
+            </a>
+            {% endif %}
+        </div>
+        <div class="nav-right">
+            <a href="/profile" class="nav-button">
+                <span>👤</span>
+                Профиль
+            </a>
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>Результаты распознавания видео</h1>
+            <p>Анализ видеофайла завершен</p>
+        </div>
+
+        <div class="video-results-container">
+            <div class="input-video">
+                <h2>Загруженное видео</h2>
+                <video controls class="result-video">
+                    <source src="{{ input_video }}" type="video/mp4">
+                    Ваш браузер не поддерживает воспроизведение видео.
+                </video>
+            </div>
+
+            <div class="video-analysis">
+                <h2>Анализ видео</h2>
+                <div class="analysis-stats">
+                    <div class="stat-card">
+                        <div class="stat-number">{{ unique_faces|length }}</div>
+                        <div class="stat-label">Уникальных лиц</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">{{ matched_candidates|length }}</div>
+                        <div class="stat-label">Найдено совпадений</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="unique-faces-section">
+                <h2>Обнаруженные лица</h2>
+                {% if unique_faces %}
+                <div class="faces-grid">
+                    {% for face in unique_faces %}
+                    <div class="face-card">
+                        <div class="face-image">
+                            <img src="data:image/jpeg;base64,{{ face.image }}" alt="Обнаруженное лицо">
+                        </div>
+                        <div class="face-info">
+                            <p>Кадр: {{ face.frame }}</p>
+                            <p>Время: {{ "%.2f"|format(face.timestamp) }}с</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="matches-section">
+                <h2>Найденные совпадения</h2>
+                {% if matched_candidates %}
+                <div class="candidates-grid">
+                    {% for candidate in matched_candidates %}
+                    <div class="candidate-card">
+                        <div class="candidate-photo">
+                            <img src="{{ candidate.photo_url }}" alt="{{ candidate.name }}">
+                        </div>
+                        <div class="candidate-info">
+                            <h3>{{ candidate.name }}</h3>
+                            <p class="candidate-gender">{{ candidate.gender }}</p>
+                            <div class="similarity-score">
+                                <span class="similarity-label">Сходство:</span>
+                                <span class="similarity-value">{{ candidate.similarity }}%</span>
+                            </div>
+                        </div>
+                        <div class="candidate-actions">
+                            <form action="/recognize_decision" method="post" style="display: inline;">
+                                <input type="hidden" name="user_id" value="{{ current_user.id }}">
+                                <input type="hidden" name="input_path" value="{{ input_video }}">
+                                <input type="hidden" name="matched_id" value="{{ candidate.id }}">
+                                <input type="hidden" name="decision" value="yes">
+                                <button type="submit" class="btn btn-sm btn-success">
+                                    ✓ Подтвердить
+                                </button>
+                            </form>
+                            <form action="/recognize_decision" method="post" style="display: inline;">
+                                <input type="hidden" name="user_id" value="{{ current_user.id }}">
+                                <input type="hidden" name="input_path" value="{{ input_video }}">
+                                <input type="hidden" name="matched_id" value="{{ candidate.id }}">
+                                <input type="hidden" name="decision" value="no">
+                                <button type="submit" class="btn btn-sm btn-danger">
+                                    ✗ Отклонить
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="no-results">
+                    <div class="no-results-icon">🎥</div>
+                    <h3>Совпадений не найдено</h3>
+                    <p>В видео не найдено лиц, соответствующих базе данных</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="result-actions">
+            <a href="/" class="btn btn-primary">Новый поиск</a>
+            <a href="/database" class="btn btn-secondary">База данных</a>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
