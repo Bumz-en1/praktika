@@ -117,18 +117,35 @@ async def decision_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         session.close()
         return
 
-    if not update.message.photo:
-        await update.message.reply_text("⛔ Пожалуйста, отправьте изображение (не видео).")
-        session.close()
-        return
-    
     if query.data == "yes":
         user.confirmed_matches += 1
+        caption = query.message.caption or ""
+        new_caption = caption + "\n\nСпасибо, ваш ответ учтён. ✅\nРешение: 'Человек определён верно. ✅"
+
+        if len(new_caption) > 1024:
+            await query.edit_message_reply_markup(reply_markup=None)
+            await query.message.reply_text("Спасибо, ваш ответ учтён. ✅\nРешение: 'Человек определён верно. ✅")
+        else:
+            await query.edit_message_caption(
+                caption=new_caption,
+                reply_markup=None
+            )
+
     elif query.data == "no":
         user.rejected_matches += 1
-    session.commit()
+        caption = query.message.caption or ""
+        new_caption = caption + "\n\nСпасибо, ваш ответ учтён. ✅\nРешение: Человек определён неверно. ❌"
 
-    # Отправка решения на сервер (если нужно)
+        if len(new_caption) > 1024:
+            await query.edit_message_reply_markup(reply_markup=None)
+            await query.message.reply_text("Спасибо, ваш ответ учтён. ✅\nРешение: Человек определён неверно. ❌")
+        else:
+            await query.edit_message_caption(
+                caption=new_caption,
+                reply_markup=None
+            )
+
+    # Отправка решения на сервер
     async with aiohttp.ClientSession() as sess:
         payload = {
             "user_id": str(data["user_id"]),
@@ -138,13 +155,10 @@ async def decision_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         }
         await sess.post(f"{MAIN_URL}/recognize_decision", data=payload)
 
-    await query.edit_message_caption(
-            caption=query.message.caption + "\n\n✅ Ваш ответ учтён.",
-            reply_markup=None
-        )
-    
     tg_sessions.pop(tg_id, None)
+    session.commit()
     session.close()
+
 
 async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tg_id = update.effective_user.id
