@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
 from telegram.ext import (
     Application, CommandHandler, MessageHandler,
@@ -9,6 +9,7 @@ import os
 from dotenv import load_dotenv
 from db.database import SessionLocal
 from db.models import User
+from pydantic import BaseModel
 
 # === Загрузка переменных окружения ===
 load_dotenv()
@@ -23,6 +24,18 @@ telegram_app = Application.builder().token(BOT_TOKEN).build()
 tg_sessions = {}
 
 # === Обработчики ===
+
+class TwoFACode(BaseModel):
+    telegram_id: int
+    code: str
+
+@app.post("/send_2fa_code")
+async def send_2fa_code(data: TwoFACode):
+    await telegram_app.bot.send_message(
+        chat_id=data.telegram_id,
+        text=f"🔐 Ваш код подтверждения входа: {data.code}\n\nЕсли это не вы — срочно смените пароль.",
+    )
+    return {"status": "ok"}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args:
@@ -68,6 +81,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             async with sess.post(f"{MAIN_URL}/tg_recognize", data=data) as resp:
                 result = await resp.json()
     user.face_searches += 1
+    session.commit()
     session.close()
 
     if not result.get("matched"):

@@ -125,46 +125,37 @@ def recognize_faces_in_video(video_path, frame_interval=10, tolerance=0.6):
 
     for filename in os.listdir(FRAMES_DIR):
         frame_path = os.path.join(FRAMES_DIR, filename)
+        matches = debug_recognize(frame_path, tolerance=tolerance)
 
-        try:
-            matches = debug_recognize(frame_path, tolerance=tolerance)
-            print(f"[DEBUG] Обработка кадра: {filename}, лиц найдено: {len(matches)}")
+        for match in matches:
+            encoding = np.array(match["encoding"])
+            is_duplicate = False
+            best_index = None
+            best_score = 0
 
-            for match in matches:
-                encoding = np.array(match["encoding"])
-                is_duplicate = False
-                best_index = None
-                best_score = 0
+            for i, known in enumerate(unique_faces):
+                dist = np.linalg.norm(np.array(known["encoding"]) - encoding)
+                if dist < 0.5:
+                    is_duplicate = True
+                    best_index = i
+                    break
 
-                for i, known in enumerate(unique_faces):
-                    dist = np.linalg.norm(np.array(known["encoding"]) - encoding)
-                    if dist < 0.5:
-                        is_duplicate = True
-                        best_index = i
-                        break
-
-                if not is_duplicate:
-                    unique_faces.append(match)
-                    print(f"[DEBUG] Добавлено новое лицо: {match['temp_path']}")
+            if not is_duplicate:
+                unique_faces.append(match)
+            else:
+                existing = unique_faces[best_index]
+                score_existing = existing["area"] * 0.6 + existing["quality"] * 0.4
+                score_new = match["area"] * 0.6 + match["quality"] * 0.4
+                if score_new > score_existing:
+                    try:
+                        os.remove(existing["file_path"])
+                    except:
+                        pass
+                    unique_faces[best_index] = match
                 else:
-                    existing = unique_faces[best_index]
-                    # Оценка: сначала площадь, затем резкость
-                    score_existing = existing["area"] * 0.6 + existing["quality"] * 0.4
-                    score_new = match["area"] * 0.6 + match["quality"] * 0.4
-                    if score_new > score_existing:
-                        try:
-                            os.remove(existing["file_path"])
-                        except:
-                            pass
-                        unique_faces[best_index] = match
-                        print(f"[DEBUG] Заменено лицо (дубликат улучшен): {match['temp_path']}")
-                    else:
-                        duplicate_path = os.path.join(DUPLICATES_DIR, os.path.basename(match["file_path"]))
-                        shutil.copyfile(match["file_path"], duplicate_path)
-                        print(f"[DEBUG] Дубликат хуже, сохранён в дубликаты: {duplicate_path}")
+                    duplicate_path = os.path.join(DUPLICATES_DIR, os.path.basename(match["file_path"]))
+                    shutil.copyfile(match["file_path"], duplicate_path)
 
-        except Exception as e:
-            print(f"[ОШИБКА] Кадр {filename}: {e}")
 
     print(f"[INFO] Уникальных лиц найдено: {len(unique_faces)}")
     return unique_faces

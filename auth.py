@@ -46,17 +46,17 @@ def get_db():
 async def get_current_user(request: Request, db=Depends(get_db)):
     token = get_token_from_cookie(request)
     if not token:
-        return RedirectResponse("/login", status_code=HTTP_303_SEE_OTHER)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = int(payload.get("sub"))
     except (JWTError, ValueError):
-        return RedirectResponse("/login", status_code=HTTP_303_SEE_OTHER)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
-        return RedirectResponse("/login", status_code=HTTP_303_SEE_OTHER)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
     return user
 

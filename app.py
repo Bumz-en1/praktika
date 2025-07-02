@@ -76,7 +76,7 @@ class AuthRedirectMiddleware(BaseHTTPMiddleware):
                     return await call_next(request)
             except (JWTError, ValueError):
                 pass
-
+        print("MIDDLEWARE COOKIE:", token)
         # Неавторизованный — редирект на /login
         return RedirectResponse("/login")
 
@@ -510,8 +510,7 @@ async def login_user(
             "expires": datetime.utcnow() + timedelta(minutes=3),
         }
 
-        from telegram import Bot
-        bot = Bot(token=os.getenv("TG_API_TOKEN"))
+        bot = request.app.state.telegram_bot
         await bot.send_message(
             chat_id=user.telegram_id,
             text=f"🔐 Ваш код подтверждения входа: {code}\n\nЕсли это не вы, введите /quit",
@@ -717,7 +716,7 @@ async def verify_2fa(
 
     entry = twofa_codes[user_id]
     if entry["code"] != code or entry["expires"] < datetime.utcnow():
-        return templates.TemplateResponse("2fa.html", {
+        return templates.TemplateResponse("two_step_auth.html", {
             "request": request,
             "error": "Неверный или просроченный код"
         })
@@ -726,20 +725,29 @@ async def verify_2fa(
     request.session.pop("2fa_user_id", None)
 
     access_token = create_access_token(data={"sub": str(user_id)})
-    response = RedirectResponse(url="/profile", status_code=302)
-    response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
 
-    # Уведомление в Telegram
-    from telegram import Bot
-    bot = Bot(token=os.getenv("TG_API_TOKEN"))
-    db_user = db.query(User).filter(User.id == user_id).first()
-    if db_user and db_user.telegram_id:
-        await bot.send_message(
-            chat_id=db_user.telegram_id,
-            text="✅ Был выполнен вход в ваш аккаунт. Если это не вы — смените пароль.",
-        )
+    # ВСТАВКА COOKIE и возвращение HTML со скриптом перехода
+    response_html = """
+    <html>
+        <head>
+            <meta http-equiv="refresh" content="0; url=/profile">
+        </head>
+        <body>
+            <p>✅ Вход выполнен. Перенаправление...</p>
+        </body>
+    </html>
+    """
+    response = HTMLResponse(content=response_html)
+    response.set_cookie(
+        key="access_token",
+        value=f"Bearer {access_token}",
+        httponly=True,
+        samesite="Lax",
+        max_age=60 * 60 * 24
+    )
 
     return response
+
 
 @app.post("/toggle_2fa")
 async def toggle_2fa(
@@ -754,7 +762,7 @@ async def toggle_2fa(
     if entry["code"] != code:
         return RedirectResponse("/profile?telegram_error=Неверный+код", status_code=303)
 
-    # 🔥 Вот тут важно: получить user из базы, а не использовать current_user
+    
     user = db.query(User).filter(User.id == current_user.id).first()
     user.two_step_auth = not user.two_step_auth
     db.commit()
@@ -774,6 +782,7 @@ async def startup_event():
     await telegram_app.initialize()
     await telegram_app.start()
     asyncio.create_task(telegram_app.updater.start_polling())
+    app.state.telegram_bot = telegram_app.bot 
 
 @app.on_event("shutdown")
 async def shutdown_event():
