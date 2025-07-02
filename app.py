@@ -532,17 +532,18 @@ async def profile(request: Request, current_user: User = Depends(get_current_use
     session = SessionLocal()
     user = session.query(User).filter(User.id == current_user.id).first()
 
-    # Собираем статистику
     stats = {
         "confirmed": user.confirmed_matches,
         "rejected": user.rejected_matches,
         "total": user.face_searches,
     }
 
-    # Пример: загружаем историю из временного атрибута
     matches = getattr(user, "_history", [])
-
     session.close()
+
+    message = request.query_params.get("message")
+    telegram_success = request.query_params.get("telegram_success")
+    telegram_error = request.query_params.get("telegram_error")
 
     return templates.TemplateResponse(
         "profile.html",
@@ -551,7 +552,9 @@ async def profile(request: Request, current_user: User = Depends(get_current_use
             "user": user,
             "matches": matches,
             "stats": stats,
-            "message": request.query_params.get("message"),
+            "message": message,
+            "telegram_success": telegram_success,
+            "telegram_error": telegram_error,
         },
     )
 
@@ -621,7 +624,8 @@ async def unlink_telegram(current_user: User = Depends(get_current_user), db: Se
     current_user.telegram_id = None
     current_user.telegram_link_token = None
     db.commit()
-    return JSONResponse(content={"message": "Telegram отвязан"})
+    return RedirectResponse("/profile?telegram_success=unlinked", status_code=303)
+
 
 @app.post("/tg_recognize")
 async def tg_recognize(
