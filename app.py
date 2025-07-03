@@ -38,27 +38,16 @@ import os
 
 load_dotenv()
 
-#временный параметр
-import logging
-logging.basicConfig(
-    level=logging.INFO,  # уровень логирования
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-
-logger = logging.getLogger(__name__)
-
 twofa_codes = {}
 recognition_temp = {}
 MAIN_URL = os.getenv("MAIN_URL")
 
 class AuthRedirectMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        # Разрешённые публичные пути
         public_paths = [
             "/login", "/register", "/static", "/favicon.ico",
             "/token", "/tg_recognize", "/verify_2fa", "/request_2fa_code"
         ]
-        # Разрешаем доступ к публичным путям
         if any(request.url.path.startswith(path) for path in public_paths):
             return await call_next(request)
 
@@ -404,16 +393,11 @@ async def recognize_decision(
     decision: str = Form(...)
 ):
     session: Session = SessionLocal()
-    logger.info(f"recognize_decision called with user_id={user_id}, input_path={input_path}, matched_id={matched_id}, decision={decision}")
 
     user = session.query(User).filter(User.id == user_id).first()
     person = session.query(Person).filter(Person.id == matched_id).first()
     real_input_path = os.path.join(UPLOAD_DIR, os.path.basename(input_path))
-    logger.info("пиписька 1")
-    logger.info(f"user found: {user is not None}")
-    logger.info(f"person found: {person is not None}")
-    logger.info(f"input_path exists: {os.path.exists(real_input_path)}")
-    logger.info(f"person.photo_path exists: {os.path.exists(person.photo_path)}")
+
     if not user or not person or not os.path.exists(real_input_path) or not os.path.exists(person.photo_path):
         session.close()
         return RedirectResponse("/", status_code=303)
@@ -422,11 +406,9 @@ async def recognize_decision(
         user.confirmed_matches += 1
     else:
         user.rejected_matches += 1
-    logger.info("пиписька 5")
     session.add(user)
     session.commit()
     session.refresh(user)
-    logger.info(f"User {user.id} stats after commit: confirmed_matches={user.confirmed_matches}, rejected_matches={user.rejected_matches}")
     session.close()
 
     if os.path.exists(input_path):
@@ -700,7 +682,6 @@ async def request_2fa_code(current_user: User = Depends(get_current_user)):
             text=f"🔐 Ваш код подтверждения для включения 2FA: {code_str}"
         )
     except Exception as e:
-        logger.error(f"Ошибка при отправке кода: {e}")
         return JSONResponse({"error": "Ошибка при отправке кода в Telegram"}, status_code=500)
 
     return JSONResponse({"message": "Код отправлен"})
