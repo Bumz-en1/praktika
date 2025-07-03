@@ -34,3 +34,17 @@ pip-wheel-metadata/
 
 # Исключить utils.py, если не хочешь его коммитить
 utils.py
+
+# Документы Office и временные файлы Word
+*.docx
+*.doc
+*.xls
+*.xlsx
+~$*
+~$*.*
+*.~*
+
+# Временные папки проекта
+time_video_frames/
+tg_uploads/
+temp_cropped_faces/

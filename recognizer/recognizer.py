@@ -7,6 +7,8 @@ import os
 import uuid
 import shutil
 from PIL import Image
+from io import BytesIO
+import base64
 
 FRAMES_DIR = "video_frames"
 UNIQUE_DIR = "unique_faces"
@@ -86,6 +88,12 @@ def extract_frames(video_path, interval=3):
 def variance_of_laplacian(image):
     return cv2.Laplacian(image, cv2.CV_64F).var()
 
+def encode_image_base64(image_array):
+    pil_image = Image.fromarray(image_array)
+    buffer = BytesIO()
+    pil_image.save(buffer, format="JPEG")
+    return base64.b64encode(buffer.getvalue()).decode()
+
 def debug_recognize(image_path, tolerance=0.6):
     image = face_recognition.load_image_file(image_path)
     face_locations = face_recognition.face_locations(image, model="hog")
@@ -106,13 +114,16 @@ def debug_recognize(image_path, tolerance=0.6):
         temp_face_path = os.path.join(CROPPED_DIR, f"face_{face_id}.jpg")
         Image.fromarray(face_image).save(temp_face_path)
 
+        image_base64 = encode_image_base64(face_image)
+
         results.append({
             "name": "Неизвестно",
             "encoding": encoding.tolist(),
             "temp_path": f"/{CROPPED_DIR}/{os.path.basename(temp_face_path)}",
             "quality": sharpness,
             "area": area,
-            "file_path": temp_face_path
+            "file_path": temp_face_path,
+            "image": image_base64
         })
 
     return results
@@ -123,15 +134,25 @@ def recognize_faces_in_video(video_path, frame_interval=10, tolerance=0.6):
 
     unique_faces = []
 
-    for filename in os.listdir(FRAMES_DIR):
+    # получить fps
+    video_capture = cv2.VideoCapture(video_path)
+    fps = video_capture.get(cv2.CAP_PROP_FPS)
+    video_capture.release()
+
+    for filename in sorted(os.listdir(FRAMES_DIR)):
         frame_path = os.path.join(FRAMES_DIR, filename)
+        frame_number = int(filename.split("_")[1].split(".")[0])  # из frame_0001.jpg
+        timestamp = frame_number / fps if fps else 0
+
         matches = debug_recognize(frame_path, tolerance=tolerance)
 
         for match in matches:
+            match["frame"] = frame_number
+            match["timestamp"] = timestamp
+
             encoding = np.array(match["encoding"])
             is_duplicate = False
             best_index = None
-            best_score = 0
 
             for i, known in enumerate(unique_faces):
                 dist = np.linalg.norm(np.array(known["encoding"]) - encoding)
@@ -155,7 +176,6 @@ def recognize_faces_in_video(video_path, frame_interval=10, tolerance=0.6):
                 else:
                     duplicate_path = os.path.join(DUPLICATES_DIR, os.path.basename(match["file_path"]))
                     shutil.copyfile(match["file_path"], duplicate_path)
-
 
     print(f"[INFO] Уникальных лиц найдено: {len(unique_faces)}")
     return unique_faces

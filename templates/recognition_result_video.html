@@ -79,7 +79,7 @@
                         </div>
                         <div class="face-info">
                             <p>Кадр: {{ face.frame }}</p>
-                            <p>Время: {{ "%.2f"|format(face.timestamp) }}с</p>
+                            <p>Время: {{ "%.2f"|format(face["timestamp"]) if "timestamp" in face else "неизвестно" }}с</p>
                         </div>
                     </div>
                     {% endfor %}
