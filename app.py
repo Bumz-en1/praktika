@@ -76,8 +76,6 @@ class AuthRedirectMiddleware(BaseHTTPMiddleware):
                     return await call_next(request)
             except (JWTError, ValueError):
                 pass
-        print("MIDDLEWARE COOKIE:", token)
-        # Неавторизованный — редирект на /login
         return RedirectResponse("/login")
 
 middleware = [
@@ -183,7 +181,6 @@ async def delete_user(
 
 @app.post("/add/confirm")
 async def confirm_person(name: str = Form(...), photo_filename: str = Form(...)):
-    print(f"[+] Добавлен человек: {name}, файл: {photo_filename}")
     return RedirectResponse("/", status_code=303)
 
 @app.get("/add", response_class=HTMLResponse)
